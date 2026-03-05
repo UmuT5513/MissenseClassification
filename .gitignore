@@ -1,2 +1,16 @@
 clinvar_20260218.vcf
 clinvar_20260218.vcf.gz.tbi
+GRCh38_genome_fasta/
+memory-bank/
+
+# Generated outputs (large / reproducible)
+*.pkl
+vep_input.vcf
+
+# Figures (regenerated on each run)
+*.png
+
+# Python
+__pycache__/
+*.pyc
+.ipynb_checkpoints/

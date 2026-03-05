@@ -1,0 +1,23 @@
+1. Amaç ve Kapsam
+TEKNOFEST 2026 Sağlıkta Yapay Zeka Yarışması (Üniversite Seviyesi) standartlarına uygun olarak, missense varyantların "Patojenik" veya "Benign" (iyi huylu) olup olmadığını sınıflandıran bir makine öğrenmesi modeli geliştir. Analizlerini bir ipynb dostası üzerinden yürüt.
+
+1)Database
+use dbNSFP grch18 database.
+
+important: protect the pos and chrom column to merge. After the merging process remove all columns that provide chrom and position information
+
+2) My needs:
+* Biochemical & Structural Effects: Physicochemical properties (delta Hydrophobicity, delta voluma, delta charge, delta molecular weight polarity), Grantham Distance
+* Sequence and Change Info
+* Local Sequence Context of aminoacides sequences 
+* Local Sequence Context of nucleotides sequences  
+* Evoluitonary Conservation
+* Population Data / MAF 
+* In silico risk scores 
+
+3)Adjustments:
+3.1)remove the ones that review status are not 3 or 4. I mean remove below 3(not included)
+3.2)Use only Single Nucleotid Variatn type and missense variants. remove the other types.
+3.3)Of the SNVs, I just need to one that PAH, CFRT and herediter. remove others.
+3.4)Remove the colums include genomic address information (chromose and positions).
+3.5)To train model use just 2 class which are benign and pathojenic. that's mean you merge likely-bening with benign and likely-pathojenic with pathojenic. remove VUS.
