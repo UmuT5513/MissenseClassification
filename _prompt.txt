@@ -1,8 +1,6 @@
 1. Amaç ve Kapsam
 TEKNOFEST 2026 Sağlıkta Yapay Zeka Yarışması (Üniversite Seviyesi) standartlarına uygun olarak, missense varyantların "Patojenik" veya "Benign" (iyi huylu) olup olmadığını sınıflandıran bir makine öğrenmesi modeli geliştir. Analizlerini bir ipynb dostası üzerinden yürüt.
 
-1)Database
-use dbNSFP grch18 database.
 
 important: protect the pos and chrom column to merge. After the merging process remove all columns that provide chrom and position information
 
