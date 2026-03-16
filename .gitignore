@@ -1,7 +1,8 @@
 clinvar_20260218.vcf
-clinvar_20260218.vcf.gz.tbi
-GRCh38_genome_fasta/
-memory-bank/
+
+#fasta file for nucleotides
+*.fa
+*.fasta
 
 # Generated outputs (large / reproducible)
 *.pkl
