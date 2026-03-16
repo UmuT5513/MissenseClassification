@@ -6,7 +6,7 @@
 
 ## 1. Project Overview
 
-Build a machine-learning pipeline (delivered as a Jupyter notebook — `.ipynb`) that classifies missense single-nucleotide variants (SNVs) as **Pathogenic** or **Benign** for three hereditary-disease gene groups: **PAH**, **CFTR**, and a third hereditary-disease gene (see §2.1 for clarification).
+Build a machine-learning pipeline (delivered as a Jupyter notebook — `.ipynb`) that classifies missense single-nucleotide variants (SNVs) as **Pathogenic** or **Benign** for three hereditary-disease gene groups: **PAH**, **CFTR**, and a hereditary cancer gene panel (see §2.1).
 
 ---
 
@@ -23,22 +23,22 @@ Build a machine-learning pipeline (delivered as a Jupyter notebook — `.ipynb`)
 
 **Filtering applied on ClinVar (Adjustment §3.1–3.5):**
 
-1. Keep only rows where **ReviewStatus ≥ 3 stars** (fields: `ReviewStatus` containing "criteria provided, multiple submitters" or above).
+1. Keep only rows where `ReviewStatus` is exactly one of:
+   - `reviewed by expert panel`
+   - `practice guideline`
 2. Keep only **Type = "single nucleotide variant"** and **Molecular Consequence = missense**.
-3. Keep only genes: `PAH`, `CFTR`, and the third hereditary gene (see note below).
+3. Keep only genes: `PAH`, `CFTR`, and the hereditary cancer panel genes (list below).
 4. Reclassify labels:
    - `Benign` + `Likely benign` → **Benign**
    - `Pathogenic` + `Likely pathogenic` → **Pathogenic**
    - Remove **VUS** and any other significance class.
 5. Retain `Chromosome` and `PositionVCF` (GRCh38) columns **only for merging**; drop them from the final feature matrix.
 
-> **⚠️ Note — "herediter" gene clarification:**
-> The prompt mentions "PAH, CFTR and herediter". _Herediter_ (Turkish: hereditary) most likely refers to one of:
-> - **HFE** — Hereditary Hemochromatosis
-> - **HBB** — Hereditary disorders of hemoglobin (Sickle-cell / Thalassemia)
-> - **HEXA** — Tay-Sachs (Hereditary GM2 gangliosidosis)
->
-> **Action required:** Confirm the exact gene symbol before running the pipeline. The plan will use a `TARGET_GENES` list that can be edited in one place.
+**Hereditary cancer gene panel (include all of these):**
+
+- Breast and ovarian cancer genes: `BRCA1`, `BRCA2`, `PALB2`
+- Digestive system and Lynch syndrome genes: `MLH1`, `MSH2`, `MSH6`, `PMS2`, `EPCAM`
+- Other key risk genes: `TP53`, `APC`, `PTEN`, `CDH1`
 
 ---
 
@@ -46,15 +46,14 @@ Build a machine-learning pipeline (delivered as a Jupyter notebook — `.ipynb`)
 
 | Item | Detail |
 |---|---|
-| **Source** | [Ensembl VEP REST API](https://rest.ensembl.org/#VEP) or **offline VEP** with cache + plugins |
-| **Format** | JSON (REST) or VCF/TSV (offline) |
+| **Source** | **Offline VEP** with cache + plugins |
+| **Format** | VCF/TSV |
 | **Why** | Single entry point to obtain SIFT, PolyPhen-2, CADD, REVEL, MetaLR, GERP++, phyloP, phastCons, and more |
 
 **How it will be used:**
 
 1. Construct a minimal VCF from the ClinVar-filtered variants (`CHROM`, `POS`, `REF`, `ALT`).
-2. **Option A — REST API** (small variant count, <1 000): POST batches of 200 variants to `https://rest.ensembl.org/vep/homo_sapiens/region`.
-3. **Option B — Offline VEP** (recommended for reproducibility): Install VEP + GRCh38 cache + dbNSFP plugin locally and run:
+2. **Offline VEP** (recommended for reproducibility): Install VEP + GRCh38 cache + dbNSFP plugin locally and run:
    ```bash
    vep -i input.vcf --cache --assembly GRCh38 \
        --plugin dbNSFP,dbNSFP4.5a.gz,SIFT_score,Polyphen2_HDIV_score,\
@@ -62,7 +61,7 @@ Build a machine-learning pipeline (delivered as a Jupyter notebook — `.ipynb`)
        phyloP100way_vertebrate,phastCons100way_vertebrate \
        --tab -o vep_output.tsv
    ```
-4. Parse output; merge back to ClinVar data on **chrom + pos + ref + alt**.
+3. Parse output; merge back to ClinVar data on **chrom + pos + ref + alt**.
 
 **Scores extracted from VEP / dbNSFP:**
 
@@ -90,7 +89,7 @@ Build a machine-learning pipeline (delivered as a Jupyter notebook — `.ipynb`)
 **How it will be used:**
 
 1. Index the FASTA with `pysam` (Python wrapper for `htslib`).
-2. For each variant, extract a **window of ±10 nt** around the position.
+2. For each variant, extract a **window of ±5 nt** around the position.
 3. Encode the flanking sequence as features:
    - One-hot encoding of each flanking nucleotide.
    - k-mer frequency counts (e.g., tri-nucleotide context).
@@ -103,12 +102,12 @@ Build a machine-learning pipeline (delivered as a Jupyter notebook — `.ipynb`)
 
 | Item | Detail |
 |---|---|
-| **Source** | [UniProt canonical FASTA for each gene](https://www.uniprot.org/) or Ensembl protein FASTA |
+| **Source** | Local FASTA file: `idmapping_2026_03_16.fasta` (UniProt canonical sequences) |
 | **Why** | Extract ±k flanking amino acids around the missense change position |
 
 **How it will be used:**
 
-1. Download canonical protein sequences for PAH, CFTR, and the third gene.
+1. Use the local file `idmapping_2026_03_16.fasta`, which already includes PAH, CFTR, and the hereditary cancer panel genes.
 2. Map ClinVar protein change notation (e.g., `p.Arg408Trp`) to position in the protein.
 3. Extract **±5 amino acids** flanking the substitution site.
 4. Encode:
@@ -121,22 +120,19 @@ Build a machine-learning pipeline (delivered as a Jupyter notebook — `.ipynb`)
 
 | Item | Detail |
 |---|---|
-| **Source** | [gnomAD v4 API](https://gnomad.broadinstitute.org/api) or pre-downloaded site-frequency files |
-| **Format** | GraphQL API (JSON) or VCF |
+| **Source** | **VEP `--af_gnomad` (preferred for ~1500 variants)** or gnomAD v4 API |
+| **Format** | VEP TSV or GraphQL API (JSON) |
 | **Why** | Minor Allele Frequency (MAF) is a key population-level feature |
 
 **How it will be used:**
 
-1. Query gnomAD for each variant by `chrom-pos-ref-alt`.
+1. Prefer VEP with `--af_gnomad` to obtain Global MAF directly in the VEP output.
 2. Extract:
    - **Global MAF** (`AF`)
-   - **Population-specific MAFs** (AFR, AMR, EAS, NFE, SAS) — optional.
-   - **Allele count (AC)** and **Allele number (AN)**.
-   - **Homozygote count**.
-3. Missing variants in gnomAD are assigned `MAF = 0` (ultra-rare / absent).
+3. Missing variants are assigned `MAF = 0` (ultra-rare / absent).
 4. Merge on **chrom + pos**.
 
-> **Alternative:** If VEP is run with the `--af_gnomad` flag, gnomAD AF is included in VEP output directly — avoid a separate download.
+> **Alternative:** Use the gnomAD API only if VEP `--af_gnomad` is unavailable.
 
 ---
 
@@ -170,7 +166,7 @@ Computed **from the amino acid substitution** (ref AA → alt AA) using lookup t
 
 ### 3.3 Local Sequence Context — Nucleotide (from FASTA §2.3)
 
-- Flanking ±10 nt one-hot features (or k-mer frequency)
+- Flanking ±5 nt one-hot features (or k-mer frequency)
 - Tri-nucleotide context (e.g., `ACG → ATG`)
 - Local GC content
 
@@ -189,8 +185,6 @@ Computed **from the amino acid substitution** (ref AA → alt AA) using lookup t
 ### 3.6 Population Data / MAF (from gnomAD §2.5)
 
 - Global allele frequency
-- Max population-specific allele frequency (optional)
-- Allele count, homozygote count
 
 ### 3.7 In Silico Risk Scores (from VEP §2.2)
 
@@ -228,8 +222,8 @@ ClinVar (filtered)
 | 2 | **ClinVar Download & Load** | Download `variant_summary.txt.gz`, read into DataFrame |
 | 3 | **ClinVar Filtering** | Apply adjustments §3.1–3.5 (review stars, SNV, missense, genes, labels) |
 | 4 | **Generate Input VCF** | Create minimal VCF for VEP from filtered variants |
-| 5 | **Run / Load VEP Results** | Call VEP REST API (or load pre-computed offline output) |
-| 6 | **gnomAD MAF Retrieval** | Query gnomAD API per variant (or extract from VEP `--af_gnomad`) |
+| 5 | **Run / Load VEP Results** | Run offline VEP and load output |
+| 6 | **gnomAD MAF Retrieval** | Extract Global MAF from VEP `--af_gnomad` output |
 | 7 | **Nucleotide Context Extraction** | `pysam` + GRCh38 FASTA → flanking nt features |
 | 8 | **Protein Context Extraction** | UniProt FASTA → flanking AA features |
 | 9 | **Biochemical Feature Calculation** | ΔHydrophobicity, ΔVolume, ΔCharge, ΔMW, ΔPolarity, Grantham |
@@ -312,11 +306,10 @@ graph TD
 
 | Risk | Mitigation |
 |---|---|
-| Small dataset after strict filtering (≥3 stars, 3 genes only) | Stratified k-fold CV; consider SMOTE if imbalanced |
-| VEP REST API rate limits | Use offline VEP or cache responses; batch requests |
-| Missing gnomAD entries | Impute with 0 (absent = ultra-rare); flag as feature |
-| Protein position mapping errors | Validate with Ensembl transcript → canonical UniProt alignment |
-| "herediter" gene ambiguity | Parameterize in `TARGET_GENES`; confirm before final run |
+| Small dataset after strict filtering (expert panel / practice guideline, targeted genes) | Track class counts after filtering; consider stratified CV; allow fallback to 2-star only if approved |
+| VEP offline setup and dbNSFP availability | Confirm cache + dbNSFP paths early; run a small test VCF before full run |
+| Missing gnomAD AF for some variants | Impute Global MAF = 0 and add a missing-flag feature |
+| Protein position mapping errors (long proteins) | Spot-check protein position parsing; flag unmapped variants |
 
 ---
 
@@ -327,7 +320,7 @@ graph TD
 | Biochemical & Structural Effects | Amino acid lookup tables (hardcoded) | Notebook cell |
 | Sequence & Change Info | ClinVar + VCF construction | `variant_summary.txt.gz` |
 | Local Nucleotide Context | Reference genome FASTA | `GRCh38.primary_assembly.fa` |
-| Local Amino Acid Context | UniProt protein FASTA | `PAH.fasta`, `CFTR.fasta`, etc. |
+| Local Amino Acid Context | UniProt protein FASTA | `PAH.fasta`, `CFTR.fasta`, panel gene FASTAs |
 | Evolutionary Conservation | VEP + dbNSFP plugin | VEP REST API or offline cache |
-| Population Data / MAF | gnomAD (via VEP flag or direct API) | VEP `--af_gnomad` or gnomAD GraphQL |
+| Population Data / MAF | gnomAD (via VEP flag) | VEP `--af_gnomad` |
 | In Silico Risk Scores | VEP + dbNSFP plugin | VEP REST API or offline cache |
