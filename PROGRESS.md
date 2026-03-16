@@ -4,8 +4,8 @@ Last Updated: 2026-03-16
 
 ## Status Summary
 
-- Current phase:
-- Next milestone:
+- Current phase: Notebook scaffolding and data loading setup
+- Next milestone: Load ClinVar variant_summary.txt.gz into the notebook
 - Blocking issues:
 
 ## Milestones
@@ -32,7 +32,7 @@ Last Updated: 2026-03-16
 ## Work Log
 
 - 2026-03-16:
-  - 
+  - Created the initial notebook scaffold (missense_classification.ipynb) with sections aligned to the project plan.
 
 ## Decisions
 
