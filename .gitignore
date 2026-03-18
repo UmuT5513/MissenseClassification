@@ -6,7 +6,8 @@ clinvar_20260218.vcf
 
 # Generated outputs (large / reproducible)
 *.pkl
-vep_input.vcf
+vep_/input.vcf
+data
 
 # Figures (regenerated on each run)
 *.png
@@ -15,3 +16,8 @@ vep_input.vcf
 __pycache__/
 *.pyc
 .ipynb_checkpoints/
+build_notebook.py
+
+# VSCode
+.vscode/
+.venv

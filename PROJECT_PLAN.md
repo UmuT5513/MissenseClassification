@@ -16,8 +16,8 @@ Build a machine-learning pipeline (delivered as a Jupyter notebook — `.ipynb`)
 
 | Item | Detail |
 |---|---|
-| **Source** | [ClinVar variant_summary.txt.gz](https://ftp.ncbi.nlm.nih.gov/pub/clinvar/tab_delimited/variant_summary.txt.gz) |
-| **Format** | Tab-delimited flat file |
+| **Source** | [ClinVar clinvar_20260218.vcf.gz](https://ftp.ncbi.nlm.nih.gov/pub/clinvar/vcf_GRCh38/) |
+| **Format** | VCF |
 | **Why** | Provides variant IDs, gene symbols, clinical significance labels, review status (star count), variant type, chromosome, position |
 | **Download** | `wget` or Python `urllib` inside the notebook |
 
@@ -52,7 +52,7 @@ Build a machine-learning pipeline (delivered as a Jupyter notebook — `.ipynb`)
 
 **How it will be used:**
 
-1. Construct a minimal VCF from the ClinVar-filtered variants (`CHROM`, `POS`, `REF`, `ALT`).
+1. Construct a VCF from the ClinVar-filtered variants (`CHROM`, `POS`, `REF`, `ALT`).
 2. **Offline VEP** (recommended for reproducibility): Install VEP + GRCh38 cache + dbNSFP plugin locally and run:
    ```bash
    vep -i input.vcf --cache --assembly GRCh38 \
@@ -229,12 +229,12 @@ ClinVar (filtered)
 | 9 | **Biochemical Feature Calculation** | ΔHydrophobicity, ΔVolume, ΔCharge, ΔMW, ΔPolarity, Grantham |
 | 10 | **Merge All Features** | Join on chrom+pos keys then **drop** genomic address columns |
 | 11 | **EDA & Visualization** | Class balance, feature distributions, correlation heatmap |
-| 12 | **Preprocessing** | Handle missing values, encode categoricals, scale numerics, train/test split |
-| 13 | **Model Training** | Train candidate models (e.g., XGBoost, LightGBM, Random Forest) |
-| 14 | **Hyperparameter Tuning** | GridSearchCV / Optuna |
-| 15 | **Evaluation** | Accuracy, F1, ROC-AUC, Precision-Recall, Confusion Matrix |
-| 16 | **Feature Importance** | SHAP values / built-in importance |
-| 17 | **Conclusion & Export** | Save model artifact, summarize results |
+| 12 | **Preprocessing** | Handle missing values, encode categoricals, scale numerics, split dataset into 3 panels (PAH, CFTR, Hereditary), then train/test split per panel |
+| 13 | **Model Training** | Train candidate models for each panel (e.g., XGBoost, LightGBM, Random Forest) |
+| 14 | **Hyperparameter Tuning** | GridSearchCV / Optuna per panel |
+| 15 | **Evaluation** | Accuracy, F1, ROC-AUC, Precision-Recall, Confusion Matrix per panel |
+| 16 | **Feature Importance** | SHAP values / built-in importance per panel |
+| 17 | **Conclusion & Export** | Save model artifacts, summarize results for all panels |
 
 ---
 
@@ -297,7 +297,8 @@ graph TD
     G --> H
     H --> I[Drop Genomic Address Columns]
     I --> J[EDA & Preprocessing]
-    J --> K[Model Training & Evaluation]
+    J --> J1[Split into PAH, CFTR, Hereditary Panels]
+    J1 --> K[Train & Eval Models per Panel]
 ```
 
 ---
